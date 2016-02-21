@@ -1,0 +1,91 @@
+#include < amxmodx >
+#include < amxmisc >
+#include < fakemeta >
+#include < hashx >
+
+new const PLUGIN[]	= 	"Pick Up Manager",
+	 VERSION[]	= 	"0.1",
+	  AUTHOR[]	=	 "Craxor";
+
+new HashX:g_tBlock;
+new giTypeCvar;
+
+public plugin_init( )
+{
+	register_plugin
+	(
+		.plugin_name	 = 	PLUGIN, 
+		.version		= 	VERSION, 
+		.author		= 	AUTHOR
+	)
+
+	g_tBlock = HashXCreate( );
+
+	register_forward( FM_Touch, "WeaponTouchFwd" );
+
+	register_concmd( "amx_pum_addkey" ,"addkey", ADMIN_BAN, " < Weapon key-name to block > ");
+	register_concmd( "amx_pum_remkey" ,"remkey", ADMIN_BAN, " < Weapon key-name to block > ");
+
+	giTypeCvar = register_cvar("pum_type", "1" );
+}
+
+public plugin_cfg( )
+{
+	
+}
+
+public plugin_end( ) 
+	HashXDestroy ( g_tBlock );
+
+
+public addkey( id, level, cid )
+{
+	if( !cmd_access( id, level, cid, 2 ) )
+		return PLUGIN_HANDLED;
+
+	new Arg1[16];
+	read_argv( 1, Arg1, charsmax( Arg1 ) );
+
+	new adder[64];
+	formatex( adder, charsmax( adder ), "models/w_%s.mdl", Arg1 );
+
+	HashXSetCell( g_tBlock, adder, 1 );
+	return PLUGIN_HANDLED;
+}
+
+public remkey( id, level, cid )
+{
+	if( !cmd_access( id, level, cid, 2 ) )
+		return PLUGIN_HANDLED;
+
+	new Arg1[16];
+	read_argv( 1, Arg1, charsmax( Arg1 ) );
+
+	new adder[64];
+	formatex( adder, charsmax( adder ), "models/w_%s.mdl", Arg1 );
+
+	HashXDeleteKey( g_tBlock, adder );
+	return PLUGIN_HANDLED;
+}
+ 
+public WeaponTouchFwd( Entity, Id )
+{
+	if ( !pev_valid( Entity ) || !pev_valid( Id ) || !is_user_alive( Id ) )
+		return FMRES_IGNORED;
+
+	new Model[32];
+	pev(Entity, pev_model, Model, charsmax( Model ) );
+
+	new iCvarValue = get_pcvar_num( giTypeCvar );
+
+	if( HashXKeyExists( g_tBlock, Model ) )
+	{
+		switch( iCvarValue )
+		{
+			case 1: engfunc( EngFunc_RemoveEntity, Entity );
+			case 2: return FMRES_SUPERCEDE;
+			default: return FMRES_IGNORED;
+		}
+	}
+	return FMRES_IGNORED;
+}
